@@ -99,9 +99,9 @@ class OS141 {
     PrinterManager printerManager;
 
     void configure(String argv[]) {
-        NUM_USERS = Integer.parseInt(argv[0]);
-        NUM_DISKS = Integer.parseInt(argv[1]);
-        NUM_PRINTERS = Integer.parseInt(argv[2]);
+        NUM_USERS = -Integer.parseInt(argv[0]);
+        NUM_DISKS = -Integer.parseInt(argv[1]);
+        NUM_PRINTERS = -Integer.parseInt(argv[2]);
     }
 
     OS141(String args[]) {
@@ -121,5 +121,7 @@ public class MainClass
             System.out.println("Args[" + i + "] = " + args[i]);
             
         System.out.println("*** 141 OS Simulation ***");
+
+        new OS141(args);
     }
 }
