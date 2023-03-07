@@ -88,6 +88,8 @@ class PrintJobThread
     PrintJobThread(String fileToPrint)
     {
         // FIND A PRINTER AND REQUEST PRINTING RIGHTS // IF ALL BUSY GETS BLOCKED
+         
+
 
         // REPEATEDLY READ A SECTOR FROM DISK AND SEND TO PRINTER, ONE LINE AT A TIME
     }
@@ -103,6 +105,12 @@ class FileInfo
     int diskNumber;
     int startingSector;
     int fileLength;
+
+    FileInfo(int dn, int ss, int fl) {
+        diskNumber = dn;
+        startingSector = ss;
+        fileLength = fl;
+    }
 }
 
 class DirectoryManager
@@ -115,6 +123,7 @@ class DirectoryManager
 
     void enter(StringBuffer fileName, FileInfo file)
     {
+        System.out.println("saving " + fileName + " to directory.");
         fileDirectory.put(fileName.toString(), file);
     }
 
@@ -136,15 +145,17 @@ class ResourceManager
     }
 
     synchronized int request() {
+        System.out.println("Requested a disk");
         while (true) {
             try {
                 for (int i = 0; i < isFree.length; i++){
                     if (isFree[i]) {
                         isFree[i] = false;
+                        System.out.println("Found available Disk: " + i);
                         return i;
                     }
                 }
-            
+                
                 this.wait(); // block until someone releases Resource
             }
             catch (Exception ex) {
@@ -155,6 +166,7 @@ class ResourceManager
     }
 
     synchronized void release(int index) {
+        System.out.println("Releasing Disk " + index);
         isFree[index] = true;
         this.notify(); // let a blocked thread run
     }
@@ -163,11 +175,22 @@ class ResourceManager
 
 class DiskManager extends ResourceManager
 {
+    int freeDiskSector[];
+    DirectoryManager directoryManager;
 
     DiskManager(int numberOfItems) {
         super(numberOfItems);
-        System.out.println("Constructed Disk Manager.");
+        System.out.println("Constructed Disk Manager Request and Release.");
+        
+        freeDiskSector = new int[numberOfItems];
+        for (int i = 0; i < numberOfItems; i++) {
+            freeDiskSector[i] = 0;
+        }
+
+        directoryManager = new DirectoryManager();
     }
+
+    // ONCE DISK IS GOING TO BE RELEASED, 
 }
 
 class PrinterManager extends ResourceManager
@@ -184,6 +207,7 @@ class UserThread
     private String fileName;
     private String line;
     private int id;
+    private boolean writing = false;
 
     UserThread(int id) // my commands come from an input file with name USERi where i is my user id
     {
@@ -200,12 +224,77 @@ class UserThread
     void processUserCommands() {
         // Create and start new PrintJobThread for each print request
         try {
+            int currentDisk = -1;
+            String currentFile = "";
+            int currentFileLength = 0;
+            int sectorStart = -1;
+            int currentSector = -1;
+
+
             FileInputStream inputStream = new FileInputStream(fileName);
             BufferedReader myReader = new BufferedReader(new InputStreamReader(inputStream));
-            
+
+            // Loop over each line in user file.
             for (String line; (line = myReader.readLine()) != null;) {
                 this.line = line;
-                System.out.println(line);
+
+                String[] commands = line.split(" ");
+                System.out.println(commands[0] + commands[1]);
+
+                switch (commands[0]) {
+                    case(".save"):
+                        writing = true;
+
+                        // save name of file to write
+                        currentFile = commands[1];
+
+                        // find free disk to write new file.
+                        int freeDisk = OS141.instance.diskManager.request();
+                        currentDisk = freeDisk;
+
+                        // find next available sector in currentDisk.
+                        sectorStart = OS141.instance.diskManager.freeDiskSector[currentDisk];
+
+                        currentSector = sectorStart;
+
+
+                        // write to the disk 1 line at a time in default:
+                        
+                        
+                    break;
+
+                    case(".end"):
+                        writing = false;
+                        // save file to DirectoryManager
+                        FileInfo newFile = new FileInfo(currentDisk, sectorStart, currentFileLength);
+                        OS141.instance.diskManager.directoryManager.enter(new StringBuffer(currentFile), newFile);
+                        
+
+                        // release disk to be used by another thread.
+                        OS141.instance.diskManager.release(currentDisk);
+
+                    break;
+
+                    case(".print"):
+                        // new PrintJobThread(commands[1]);
+                    break;
+
+                    default:
+                        if (writing) {
+                            // write current line to disk
+                            OS141.instance.disks[currentDisk].write(currentSector, new StringBuffer(line));
+                            // increment currentFileLength
+                            currentFileLength += 1;
+
+                        }
+
+
+
+                    break;
+                }
+
+
+
             } 
 
             inputStream.close();
@@ -217,6 +306,8 @@ class UserThread
 }
 
 class OS141 {
+    static OS141 instance = null;
+
     int NUM_USERS = 0, NUM_DISKS = 0, NUM_PRINTERS = 0;
     String userFileNames[];
     UserThread users[];
@@ -263,6 +354,7 @@ class OS141 {
         diskManager = new DiskManager(NUM_DISKS);
         printerManager = new PrinterManager(NUM_PRINTERS);
         
+        instance = this;
     }
 
     void startUserThreads() {
@@ -286,6 +378,13 @@ class OS141 {
         for (int i = 0; i < src.length(); i++) {
             dest.setCharAt(i, src.charAt(i));
         }
+    }
+
+    static OS141 instance(String args[]) {
+        if (instance == null) {
+            instance = new OS141(args);
+        }
+        return instance;
     }
 
     void main() {
