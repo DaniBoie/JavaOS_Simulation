@@ -239,7 +239,6 @@ class UserThread
                 this.line = line;
 
                 String[] commands = line.split(" ");
-                System.out.println(commands[0] + commands[1]);
 
                 switch (commands[0]) {
                     case(".save"):
@@ -256,7 +255,8 @@ class UserThread
                         sectorStart = OS141.instance.diskManager.freeDiskSector[currentDisk];
 
                         currentSector = sectorStart;
-
+                        
+                        System.out.println("Writing file " + currentFile);
 
                         // write to the disk 1 line at a time in default:
                         
@@ -273,6 +273,8 @@ class UserThread
                         // release disk to be used by another thread.
                         OS141.instance.diskManager.release(currentDisk);
 
+                        System.out.println("Finished writing " + currentFile + " to Disk " + currentDisk);
+
                     break;
 
                     case(".print"):
@@ -282,6 +284,7 @@ class UserThread
                     default:
                         if (writing) {
                             // write current line to disk
+                            System.out.println("Writing : " + line);
                             OS141.instance.disks[currentDisk].write(currentSector, new StringBuffer(line));
                             // increment currentFileLength
                             currentFileLength += 1;
