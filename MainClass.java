@@ -302,11 +302,15 @@ class UserThread
 
                     default:
                         if (writing) {
+                            
                             // write current line to disk
                             System.out.println("Writing : " + line);
                             OS141.instance.disks[currentDisk].write(currentSector, new StringBuffer(line));
+
                             // increment currentFileLength
                             currentFileLength += 1;
+                            currentSector += 1;
+                            
 
                         }
 
