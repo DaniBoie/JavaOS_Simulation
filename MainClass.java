@@ -269,6 +269,13 @@ class UserThread
                         FileInfo newFile = new FileInfo(currentDisk, sectorStart, currentFileLength);
                         OS141.instance.diskManager.directoryManager.enter(new StringBuffer(currentFile), newFile);
                         
+                        // Change the next available sector in the disk manager.
+                        OS141.instance.diskManager.freeDiskSector[currentDisk] = sectorStart + currentFileLength;
+
+                        // Reset file length for next file.
+                        currentFileLength = 0;
+                        
+                        
 
                         // release disk to be used by another thread.
                         OS141.instance.diskManager.release(currentDisk);
@@ -408,6 +415,8 @@ public class MainClass
         System.out.println("*** 141 OS Simulation ***");
         OS141 simulation = new OS141(args);
         simulation.main();
+        System.out.println(simulation.diskManager.directoryManager);
+        
     }
 
     
