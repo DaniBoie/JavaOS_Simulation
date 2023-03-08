@@ -8,7 +8,7 @@ class Disk
     // extends Thread
 {
     static final int NUM_SECTORS = 2048;
-    static final int DISK_DELAY = 800;
+    static final int DISK_DELAY = 80;
     StringBuffer sectors[] = new StringBuffer[NUM_SECTORS];
 
     Disk()
@@ -38,6 +38,7 @@ class Disk
     {
         try {
             Thread.sleep(DISK_DELAY);
+            data.delete(0, data.length());
             OS141.bufferCopy(data , sectors[sector]);
         }
         catch (Exception ex) {
@@ -50,28 +51,43 @@ class Disk
 class Printer
     // extends Thread
 {
-    static final int PRINT_DELAY = 2750;
+    static final int PRINT_DELAY = 275;
     String fileName;
     private int id;
+    FileWriter myWriter;
 
     Printer(int id)
     {
         this.id = id;
         fileName = "PRINTER" + id;
+        try {
+            myWriter = new FileWriter(fileName);
+        }
+        catch(Exception ex) {
+            System.out.println("Exception has been" + " caught" + ex);
+        }
+        
 
     }
 
     void print(StringBuffer data)  // call sleep
     {
+        String writeData = data.toString();
+        System.out.println("Printing: " + writeData);
+
         try {
+
+            myWriter.write(writeData);
+            myWriter.write("\n");
+            myWriter.flush();
+
             Thread.sleep(PRINT_DELAY);
 
-            FileWriter myWriter = new FileWriter(fileName);
+            // FileWriter 
 
-            myWriter.write(data.toString());
-            myWriter.write("\n");
+            
 
-            myWriter.close();
+            // myWriter.close();
         }
         catch (Exception ex) {
             System.out.println("Exception has been" + " caught" + ex);
@@ -84,32 +100,44 @@ class PrintJobThread
     extends Thread
 {
     StringBuffer line = new StringBuffer(); // only allowed one line to reuse for read from disk and print to printer
+    int currentPrinter;
+    FileInfo currentFile;
+    int currentSector;
+    StringBuffer printFile;
 
     PrintJobThread(String fileToPrint)
     {
+
+        printFile = new StringBuffer(fileToPrint);
         // FIND A PRINTER AND REQUEST PRINTING RIGHTS // IF ALL BUSY GETS BLOCKED
          
-        int currentPrinter = OS141.instance.printerManager.request();
+        
 
-        FileInfo currentFile = OS141.instance.diskManager.directoryManager.lookup(new StringBuffer(fileToPrint));
-
-        int currentSector = currentFile.startingSector;
-
-        StringBuffer data = new StringBuffer();
-
-        for (int i = currentSector; i < currentSector + currentFile.fileLength; i++) {
-            OS141.instance.disks[currentFile.diskNumber].read(currentSector, data);
-            OS141.instance.printers[currentPrinter].print(data);
-        }
-
-        OS141.instance.printerManager.release(currentPrinter);
+        
 
         // REPEATEDLY READ A SECTOR FROM DISK AND SEND TO PRINTER, ONE LINE AT A TIME
     }
 
     public void run()
     {
+
         System.out.println("Print Job running...");
+
+        currentPrinter = OS141.instance.printerManager.request();
+
+        currentFile = OS141.instance.diskManager.directoryManager.lookup(printFile);
+
+        currentSector = currentFile.startingSector;
+
+        for (int i = currentSector; i < currentSector + currentFile.fileLength; i++) {
+            OS141.instance.disks[currentFile.diskNumber].read(i, line);
+            // System.out.print("Printing : " + line);
+            OS141.instance.printers[currentPrinter].print(line);
+        }
+
+        OS141.instance.printerManager.release(currentPrinter);
+    
+        System.out.println("Finished Print Job ...");
     }
 }
 
@@ -158,13 +186,13 @@ class ResourceManager
     }
 
     synchronized int request() {
-        System.out.println("Requested a disk");
+        // System.out.println("Requested a disk");
         while (true) {
             try {
                 for (int i = 0; i < isFree.length; i++){
                     if (isFree[i]) {
                         isFree[i] = false;
-                        System.out.println("Found available Disk: " + i);
+                        // System.out.println("Found available Disk: " + i);
                         return i;
                     }
                 }
@@ -179,7 +207,7 @@ class ResourceManager
     }
 
     synchronized void release(int index) {
-        System.out.println("Releasing Disk " + index);
+        // System.out.println("Releasing Disk " + index);
         isFree[index] = true;
         this.notify(); // let a blocked thread run
     }
@@ -297,7 +325,9 @@ class UserThread
                     break;
 
                     case(".print"):
-                        // new PrintJobThread(commands[1]);
+                        PrintJobThread newPrint  = new PrintJobThread(commands[1]);
+                        newPrint.start();
+                        // newPrint.join();
                     break;
 
                     default:
@@ -310,8 +340,6 @@ class UserThread
                             // increment currentFileLength
                             currentFileLength += 1;
                             currentSector += 1;
-                            
-
                         }
 
 
@@ -384,25 +412,40 @@ class OS141 {
     }
 
     void startUserThreads() {
-        for (int i = 0; i < NUM_USERS; i++) {
-            users[i].start();
+        // for (int i = 0; i < NUM_USERS; i++) {
+        //     users[i].start();
+        // }
+        for (var user : users) {
+            user.start();
         }
     }
 
     void joinUserThreads() {
-        for (int i = 0; i < NUM_USERS; i++) {
+        // for (int i = 0; i < NUM_USERS; i++) {
+        //     try {
+        //         users[i].join();
+        //     } catch (Exception ex) {
+        //         System.out.println("Exception has been" + " caught" + ex);
+        //     }
+        // }
+
+        for (var user : users) {
             try {
-                users[i].join();
+                user.join();
             } catch (Exception ex) {
                 System.out.println("Exception has been" + " caught" + ex);
             }
+            
         }
+
+        
     }
 
     static void bufferCopy(StringBuffer dest, StringBuffer src) {
-        System.out.println("copy");
+        // System.out.println("copy");
         for (int i = 0; i < src.length(); i++) {
-            dest.setCharAt(i, src.charAt(i));
+            // dest.setCharAt(i, src.charAt(i));
+            dest.insert(i, src.charAt(i));
         }
     }
 
@@ -417,7 +460,7 @@ class OS141 {
         // DO WORK NECCESARY TO INITIATE OS AND RUN.
         startUserThreads();
         joinUserThreads();
-        System.out.println("everything went smooth");
+        // System.out.println("everything went smooth");
     }
 
 }
@@ -431,7 +474,6 @@ public class MainClass
         System.out.println("*** 141 OS Simulation ***");
         OS141 simulation = new OS141(args);
         simulation.main();
-        System.out.println(simulation.diskManager.directoryManager);
         
     }
 
