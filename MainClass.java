@@ -89,7 +89,20 @@ class PrintJobThread
     {
         // FIND A PRINTER AND REQUEST PRINTING RIGHTS // IF ALL BUSY GETS BLOCKED
          
+        int currentPrinter = OS141.instance.printerManager.request();
 
+        FileInfo currentFile = OS141.instance.diskManager.directoryManager.lookup(new StringBuffer(fileToPrint));
+
+        int currentSector = currentFile.startingSector;
+
+        StringBuffer data = new StringBuffer();
+
+        for (int i = currentSector; i < currentSector + currentFile.fileLength; i++) {
+            OS141.instance.disks[currentFile.diskNumber].read(currentSector, data);
+            OS141.instance.printers[currentPrinter].print(data);
+        }
+
+        OS141.instance.printerManager.release(currentPrinter);
 
         // REPEATEDLY READ A SECTOR FROM DISK AND SEND TO PRINTER, ONE LINE AT A TIME
     }
@@ -190,7 +203,6 @@ class DiskManager extends ResourceManager
         directoryManager = new DirectoryManager();
     }
 
-    // ONCE DISK IS GOING TO BE RELEASED, 
 }
 
 class PrinterManager extends ResourceManager
