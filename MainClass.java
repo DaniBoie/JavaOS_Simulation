@@ -412,31 +412,31 @@ class OS141 {
     }
 
     void startUserThreads() {
-        // for (int i = 0; i < NUM_USERS; i++) {
-        //     users[i].start();
-        // }
-        for (var user : users) {
-            user.start();
+        for (int i = 0; i < NUM_USERS; i++) {
+            users[i].start();
         }
+        // for (var user : users) {
+        //     user.start();
+        // }
     }
 
     void joinUserThreads() {
-        // for (int i = 0; i < NUM_USERS; i++) {
-        //     try {
-        //         users[i].join();
-        //     } catch (Exception ex) {
-        //         System.out.println("Exception has been" + " caught" + ex);
-        //     }
-        // }
-
-        for (var user : users) {
+        for (int i = 0; i < NUM_USERS; i++) {
             try {
-                user.join();
+                users[i].join();
             } catch (Exception ex) {
                 System.out.println("Exception has been" + " caught" + ex);
             }
-            
         }
+
+        // for (var user : users) {
+        //     try {
+        //         user.join();
+        //     } catch (Exception ex) {
+        //         System.out.println("Exception has been" + " caught" + ex);
+        //     }
+            
+        // }
 
         
     }
@@ -467,15 +467,10 @@ class OS141 {
 
 public class MainClass
 {
-
-
     public static void main(String args[])
     {
         System.out.println("*** 141 OS Simulation ***");
         OS141 simulation = new OS141(args);
         simulation.main();
-        
     }
-
-    
 }
